@@ -148,15 +148,31 @@ def execute(cmd)
 end
 
 # Fetch posts from a specific artist. Must be supporting said artist.
+require 'thread'
+
 def fetch_artist_posts(artist)
   puts("Fetching posts from '#{artist.name}'...")
   page_urls = fanbox("/post.paginateCreator?creatorId=#{artist.creator_id}")
   posts = page_urls.flat_map { |page_url| fetch_relevant_posts(page_url, artist) }
   puts "Found #{posts.size}"
 
-  posts.each do |post|
-    download_post(post, artist)
+  # Create a queue to hold the posts
+  queue = Queue.new
+  posts.each { |post| queue << post }
+
+  # Create a thread pool with a maximum of 5 threads
+  threads = []
+  5.times do
+    threads << Thread.new do
+      until queue.empty?
+        post = queue.pop(true) rescue nil
+        download_post(post, artist) if post
+      end
+    end
   end
+
+  # Wait for all threads to finish
+  threads.each(&:join)
   puts
 end
 
