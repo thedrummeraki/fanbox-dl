@@ -164,11 +164,7 @@ def fetch_artist_posts(artist)
   5.times do
     threads << Thread.new do
       until queue.empty?
-        post = begin
-          queue.pop(true)
-        rescue StandardError
-          nil
-        end
+        post = queue.pop(true) rescue nil
         download_post(post, artist) if post
       end
     end
