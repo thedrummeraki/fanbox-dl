@@ -1,5 +1,6 @@
 require 'fileutils'
 require 'json'
+require 'thread'
 require 'debug'
 
 FANBOX_API_URL = 'https://api.fanbox.cc'.freeze
@@ -148,8 +149,6 @@ def execute(cmd)
 end
 
 # Fetch posts from a specific artist. Must be supporting said artist.
-require 'thread'
-
 def fetch_artist_posts(artist)
   puts("Fetching posts from '#{artist.name}'...")
   page_urls = fanbox("/post.paginateCreator?creatorId=#{artist.creator_id}")
@@ -165,7 +164,11 @@ def fetch_artist_posts(artist)
   5.times do
     threads << Thread.new do
       until queue.empty?
-        post = queue.pop(true) rescue nil
+        post = begin
+          queue.pop(true)
+        rescue StandardError
+          nil
+        end
         download_post(post, artist) if post
       end
     end
