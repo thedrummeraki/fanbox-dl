@@ -272,6 +272,4 @@ def main
 end
 
 # Run the main function only if this script is being run directly
-if __FILE__ == $PROGRAM_NAME
-  main
-end
+main if __FILE__ == $PROGRAM_NAME
