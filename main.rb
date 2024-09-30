@@ -6,6 +6,17 @@ require 'debug'
 FANBOX_API_URL = 'https://api.fanbox.cc'.freeze
 SEPARATOR = ('-' * 100).freeze
 
+$current_download = nil
+
+# Handle Ctrl-C (SIGINT)
+Signal.trap('INT') do
+  if $current_download && File.exist?($current_download)
+    puts "\nInterrupted. Deleting partial download: #{$current_download}"
+    File.delete($current_download)
+  end
+  exit
+end
+
 def sanitize_filename(filename)
   filename.gsub(/[\s&?*:|"<>()]+/, '_')
 end
@@ -167,7 +178,13 @@ def get(path, download)
   command = curl_command(url)
   command << " --output - > #{download}" if download
   puts("[GET] #{url}") if !download || ENV['VERBOSE']
-  res = execute(command)
+
+  begin
+    $current_download = download if download
+    res = execute(command)
+  ensure
+    $current_download = nil
+  end
 
   print(" [done]\n") if download && !ENV['VERBOSE']
 
