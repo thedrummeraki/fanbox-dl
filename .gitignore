@@ -1,0 +1,5 @@
+./cookie
+out
+!out/.keep
+
+.aider*

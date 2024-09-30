@@ -10,6 +10,15 @@ def sanitize_filename(filename)
   filename.gsub(/[\s&?*:|"<>()]+/, '_')
 end
 
+# Cookied used to auth to Fanbox servers
+def fanbox_cookie
+  ENV['FANBOX_COOKIE'] || File.read('./cookie').strip
+rescue Errno::ENOENT
+  puts('[Warning] No cookie was found. Make sure to set a Fanbox.cc cookie in order to download posts.')
+  puts("[Warning] Without it, you won't be authenticated to Fanbox's server.")
+  ''
+end
+
 # A pixiv artist, fetched from the list of supporting artists.
 class Artist
   attr_accessor :name, :title, :fee, :id, :creator_id
@@ -115,6 +124,35 @@ class PostInfo
   end
 end
 
+def curl_headers
+  {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:130.0) Gecko/20100101 Firefox/130.0',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-CA,en-US;q=0.7,en;q=0.3',
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Origin': 'https://fanbox.cc',
+    'Alt-Used': 'api.fanbox.cc',
+    'Connection': 'keep-alive',
+    'Referer': 'https://www.fanbox.cc/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+    'TE': 'trailers',
+    'Cookie': fanbox_cookie
+  }
+end
+
+def curl_command(url, compressed: true)
+  options = ['curl', '-s', "'#{url}'"]
+  options << '--compressed' if compressed
+  curl_headers.each do |key, value|
+    options << '-H'
+    options << "'#{[key, value].join(': ')}'"
+  end
+
+  options.join(' ')
+end
+
 # GET request, specify where to output the result if applicable.
 def get(path, download)
   if download
@@ -122,16 +160,18 @@ def get(path, download)
     if File.exist?(download)
       puts ' [skipping -- already exists]'
       return
-    else
-      puts
     end
   end
 
   url = path.start_with?('http') ? path : "#{FANBOX_API_URL}#{path}"
-  command = "curl -s '#{url}' --compressed -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:130.0) Gecko/20100101 Firefox/130.0' -H 'Accept: application/json, text/plain, */*' -H 'Accept-Language: en-CA,en-US;q=0.7,en;q=0.3' -H 'Accept-Encoding: gzip, deflate, br, zstd' -H 'Origin: https://www.fanbox.cc' -H 'Alt-Used: api.fanbox.cc' -H 'Connection: keep-alive' -H 'Referer: https://www.fanbox.cc/' -H 'Cookie: FANBOXSESSID=44834125_TgaQ3AsiGvM0gpgkQbvUJy61cYblUUV2; p_ab_id=3; p_ab_id_2=8; p_ab_d_id=1089934541; _ga_D9TLP3EFER=GS1.1.1727540900.5.0.1727540900.60.0.0; _ga=GA1.2.1890423635.1727527375; _gcl_au=1.1.925753722.1727527376; _gid=GA1.2.60127567.1727527378; privacy_policy_agreement=7; privacy_policy_notification=0; cf_clearance=kAiwLfaCdqsdET5Td4P7QwntBHq7RX515y3byxhA0jU-1727539058-1.2.1.1-oFeUdxQKSoAShTPMG2jZt.3jYOLx.BA4K7jGdgZd.dDkkrRmWuKaGBVgB49fTZYyk7ZJ52GY9EmR3XTwJR2gh3X4Q_tPqeDdANj10QekfCpkMzG6ONxjNNp9GzrSCByG.QiIpDuPxBoyKD0ztK9k4wIKqVw40YVDRlyNxWFnSlPCXqLeBAq62pqRGGCjqsR6Fs66eJ19J1FaB6oxZgVBXhbhawQRNs.c2zAIneo6aqpPeaZ6fySa4QOuZPqZRdCT9jR9fugIZxi0T5J0zbD9OJtYpPgPRnsJ5Wdzp5GQMYzqlHG3.wEml3qT03L0wrZbYUcHhGGWDVA8WsWA8NvJlnzK9I6Mg7hdNDpYowvuIEw; __cf_bm=a0WxsiAWzD_wI5qUMiIpImZTP1sP.ibmbeHJzMwYHjI-1727540900-1.0.1.1-gieQaIIciqk5Pye7iKf1oKp_YW6Sc7D0ew_20LmMrT55hKRa4mUeIrE6u39PCe8xqY5gYpMAyxUaDiQivAwqEw' -H 'Sec-Fetch-Dest: empty' -H 'Sec-Fetch-Mode: cors' -H 'Sec-Fetch-Site: same-site' -H 'TE: trailers'"
+  command = curl_command(url)
   command << " --output - > #{download}" if download
   puts("[GET] #{url}") if !download || ENV['VERBOSE']
-  execute(command)
+  res = execute(command)
+
+  print(" [done]\n") if download && !ENV['VERBOSE']
+
+  res
 end
 
 # Fanbox specific GET request, returns a parsed JSON (if download is not specified.)
@@ -164,7 +204,11 @@ def fetch_artist_posts(artist)
   5.times do
     threads << Thread.new do
       until queue.empty?
-        post = queue.pop(true) rescue nil
+        post = begin
+          queue.pop(true)
+        rescue StandardError
+          nil
+        end
         download_post(post, artist) if post
       end
     end
