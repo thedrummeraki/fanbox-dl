@@ -246,24 +246,29 @@ def fetch_post_info(post, artist)
   PostInfo.from(post_info_data, artist)
 end
 
+def print_summary(supporting, total_fee)
+  puts("Supporting #{supporting.size} artist(s)")
+  puts("Total fee: #{total_fee} JPY")
+  puts(SEPARATOR)
+end
+
+def process_artist(artist)
+  if artist.skip?
+    puts("Skipping #{artist.name} as requested.")
+  else
+    fetch_artist_posts(artist)
+    sleep(0.2)
+  end
+  puts(SEPARATOR)
+end
+
 def main
   data = fanbox('/plan.listSupporting')
   supporting = data.map { |dict| Artist.from(dict) }
   total_fee = supporting.reduce(0) { |acc, artist| acc + artist.fee }
 
-  puts("Supporting #{supporting.size} artist(s)")
-  puts("Total fee: #{total_fee} JPY")
-  puts(SEPARATOR)
-
-  supporting.each do |artist|
-    if artist.skip?
-      puts("Skipping #{artist.name} as requested.")
-    else
-      fetch_artist_posts(artist)
-      sleep(0.2)
-    end
-    puts(SEPARATOR)
-  end
+  print_summary(supporting, total_fee)
+  supporting.each { |artist| process_artist(artist) }
 end
 
 # Run the main function only if this script is being run directly
