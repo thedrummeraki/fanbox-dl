@@ -2,17 +2,20 @@ require 'fileutils'
 require 'json'
 require 'thread'
 require 'debug'
+require 'thread_safe'
 
 FANBOX_API_URL = 'https://api.fanbox.cc'.freeze
 SEPARATOR = ('-' * 100).freeze
 
-$current_download = nil
+$current_downloads = ThreadSafe::Hash.new
 
 # Handle Ctrl-C (SIGINT)
 Signal.trap('INT') do
-  if $current_download && File.exist?($current_download)
-    puts "\nInterrupted. Deleting partial download: #{$current_download}"
-    File.delete($current_download)
+  $current_downloads.each_pair do |thread, file|
+    if file && File.exist?(file)
+      puts "\nInterrupted. Deleting partial download: #{file}"
+      File.delete(file)
+    end
   end
   exit
 end
@@ -180,10 +183,10 @@ def get(path, download)
   puts("[GET] #{url}") if !download || ENV['VERBOSE']
 
   begin
-    $current_download = download if download
+    $current_downloads[Thread.current] = download if download
     res = execute(command)
   ensure
-    $current_download = nil
+    $current_downloads.delete(Thread.current)
   end
 
   print(" [done]\n") if download && !ENV['VERBOSE']
