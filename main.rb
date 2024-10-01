@@ -40,7 +40,7 @@ end
 Signal.trap('INT') do
   $current_downloads.each_pair do |_thread, file|
     if file && File.exist?(file)
-      puts "\nInterrupted. Deleting partial download: #{file}"
+      log_warn("\nInterrupted. Deleting partial download: #{file}")
       File.delete(file)
     end
   end
@@ -55,8 +55,8 @@ end
 def fanbox_cookie
   ENV['FANBOX_COOKIE'] || File.read('./cookie').strip
 rescue Errno::ENOENT
-  puts('[Warning] No cookie was found. Make sure to set a Fanbox.cc cookie in order to download posts.')
-  puts("[Warning] Without it, you won't be authenticated to Fanbox's server.")
+  log_warn('No cookie was found. Make sure to set a Fanbox.cc cookie in order to download posts.')
+  log_warn("Without it, you won't be authenticated to Fanbox's server.")
   ''
 end
 
@@ -226,9 +226,9 @@ end
 # GET request, specify where to output the result if applicable.
 def get(path, download)
   if download
-    print("\t-> #{download}...")
+    log_verbose("\t-> #{download}...", inline: true)
     if File.exist?(download)
-      puts ' [skipping -- already exists]'
+      log_verbose(' [skipping -- already exists]')
       return
     end
   end
@@ -236,7 +236,7 @@ def get(path, download)
   url = path.start_with?('http') ? path : "#{FANBOX_API_URL}#{path}"
   command = curl_command(url)
   command << " --output - > #{download}" if download
-  puts("[GET] #{url}") if !download || ENV['VERBOSE']
+  log_verbose("[GET] #{url}") if !download || ENV['VERBOSE']
 
   begin
     $current_downloads[Thread.current] = download if download
@@ -245,7 +245,7 @@ def get(path, download)
     $current_downloads.delete(Thread.current)
   end
 
-  print(" [done]\n") if download && !ENV['VERBOSE']
+  log_verbose(" [done]\n", inline: true) if download && !ENV['VERBOSE']
 
   res
 end
@@ -260,16 +260,17 @@ end
 
 # Execute a shell command.
 def execute(cmd)
-  puts(cmd) if ENV.fetch('VERBOSE', nil)
+  log_verbose(cmd)
+
   `#{cmd}`
 end
 
 # Fetch posts from a specific artist. Must be supporting said artist.
 def fetch_artist_posts(artist)
-  puts("Fetching posts from '#{artist.name}'...")
+  log_info("Fetching posts from '#{artist.name}'...")
   page_urls = fanbox("/post.paginateCreator?creatorId=#{artist.creator_id}")
   posts = page_urls.flat_map { |page_url| fetch_relevant_posts(page_url, artist) }
-  puts "Found #{posts.size}"
+  log_info("Found #{posts.size}")
 
   # Create a queue to hold the posts
   queue = Queue.new
@@ -298,13 +299,14 @@ end
 # Fetch paid posts from an artist that are in the supported plan (ie: ignore posts that cost more that what user is pledging).
 def fetch_relevant_posts(page_url, artist)
   posts_data = fanbox(page_url)
-  sleep(0.2)
+  sleep(0.1)
   posts = posts_data.map { |dict| Post.from(dict) }
   posts.select { |post| post.fee_required.positive? && post.fee_required <= artist.fee }
 end
 
 # Download a post to a file
 def download_post(post, artist)
+  log_info("#{post.title} (#{post.fee_required} JPY)")
   post_info = fetch_post_info(post, artist)
 
   files = post_info.files + post_info.images
@@ -323,14 +325,14 @@ def fetch_post_info(post, artist)
 end
 
 def print_summary(supporting, total_fee)
-  puts("Supporting #{supporting.size} artist(s)")
-  puts("Total fee: #{total_fee} JPY")
+  log_info("Supporting #{supporting.size} artist(s)")
+  log_info("Total fee: #{total_fee} JPY")
   puts(SEPARATOR)
 end
 
 def process_artist(artist)
   if artist.skip?
-    puts("Skipping #{artist.name} as requested.")
+    log_info("Skipping #{artist.name} as requested.")
   else
     fetch_artist_posts(artist)
     sleep(0.2)
