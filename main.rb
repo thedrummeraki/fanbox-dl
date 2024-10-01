@@ -15,20 +15,24 @@ YELLOW = "\e[33m".freeze
 RED = "\e[31m".freeze
 RESET = "\e[0m".freeze
 
-def log_verbose(message)
-  puts "#{GREEN}[VERBOSE] #{message}#{RESET}" if ENV['VERBOSE']
+def log_verbose(message, inline: false)
+  output = "#{GREEN}[VERBOSE] #{message}#{RESET}"
+  inline ? print(output) : puts(output) if ENV['VERBOSE']
 end
 
-def log_info(message)
-  puts "[INFO] #{message}"
+def log_info(message, inline: false)
+  output = "[INFO] #{message}"
+  inline ? print(output) : puts(output)
 end
 
-def log_warn(message)
-  puts "#{YELLOW}[WARN] #{message}#{RESET}"
+def log_warn(message, inline: false)
+  output = "#{YELLOW}[WARN] #{message}#{RESET}"
+  inline ? print(output) : puts(output)
 end
 
-def log_error(message)
-  puts "#{RED}[ERROR] #{message}#{RESET}"
+def log_error(message, inline: false)
+  output = "#{RED}[ERROR] #{message}#{RESET}"
+  inline ? print(output) : puts(output)
 end
 
 # Handle Ctrl-C (SIGINT)
