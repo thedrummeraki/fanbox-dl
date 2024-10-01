@@ -1,5 +1,6 @@
-./cookie
+cookie
 out
 !out/.keep
-
+venv
 .aider*
+.DS_Store
