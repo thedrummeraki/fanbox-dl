@@ -11,7 +11,7 @@ $current_downloads = ThreadSafe::Hash.new
 
 # Handle Ctrl-C (SIGINT)
 Signal.trap('INT') do
-  $current_downloads.each_pair do |thread, file|
+  $current_downloads.each_pair do |_thread, file|
     if file && File.exist?(file)
       puts "\nInterrupted. Deleting partial download: #{file}"
       File.delete(file)
@@ -50,14 +50,9 @@ class Artist
     end
   end
 
-  def skip?
-    skipped = Artist.skipped_artists
-    [name, title, id, creator_id].select { |x| skipped.include?(x) }.any?
-  end
-
   def self.parse_ignore_file
     ignore_rules = { include: [], exclude: [] }
-    File.readlines('./artist.ignore').each do |line|
+    File.readlines('./.artistignore').each do |line|
       line = line.strip
       next if line.empty? || line.start_with?('#')
 
@@ -75,10 +70,10 @@ class Artist
   def skip?
     ignore_rules = Artist.parse_ignore_file
     identifiers = [name, title, id, creator_id]
-    
+
     # Check if the artist is explicitly included
     return false if identifiers.any? { |x| ignore_rules[:include].include?(x) }
-    
+
     # Check if the artist is excluded
     identifiers.any? { |x| ignore_rules[:exclude].include?(x) }
   end
