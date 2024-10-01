@@ -346,8 +346,8 @@ end
 def parse_options
   options = {}
   OptionParser.new do |opts|
-    opts.banner = "Usage: ruby main.rb [options]"
-    opts.on("-f", "--force", "Force download of files even if they already exist") do
+    opts.banner = 'Usage: ruby main.rb [options]'
+    opts.on('-f', '--force', 'Force download of files even if they already exist') do
       options[:force] = true
     end
   end.parse!
