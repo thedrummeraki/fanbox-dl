@@ -67,15 +67,26 @@ class Artist
     { include: [], exclude: [] }
   end
 
+  def self.match_rule?(identifier, rule)
+    return true if rule == '*'
+    return identifier.include?(rule[1..]) if rule.start_with?('*') && rule.end_with?('*')
+    return identifier.start_with?(rule[1..]) if rule.start_with?('*')
+    return identifier.end_with?(rule[0..-2]) if rule.end_with?('*')
+    identifier == rule
+  end
+
   def skip?
     ignore_rules = Artist.parse_ignore_file
     identifiers = [name, title, id, creator_id]
 
+    # Check if there's a wildcard exclude rule
+    return true if ignore_rules[:exclude].include?('*')
+
     # Check if the artist is explicitly included
-    return false if identifiers.any? { |x| ignore_rules[:include].include?(x) }
+    return false if identifiers.any? { |x| ignore_rules[:include].any? { |rule| Artist.match_rule?(x, rule) } }
 
     # Check if the artist is excluded
-    identifiers.any? { |x| ignore_rules[:exclude].include?(x) }
+    identifiers.any? { |x| ignore_rules[:exclude].any? { |rule| Artist.match_rule?(x, rule) } }
   end
 
   # File system identifier. Used to identify an artist on the file system.
