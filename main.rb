@@ -3,6 +3,7 @@ require 'json'
 require 'thread'
 require 'debug'
 require 'thread_safe'
+require 'optparse'
 
 FANBOX_API_URL = 'https://api.fanbox.cc'.freeze
 SEPARATOR = ('-' * 100).freeze
@@ -224,10 +225,12 @@ def curl_command(url, compressed: true)
 end
 
 # GET request, specify where to output the result if applicable.
+$force_download = false
+
 def get(path, download)
   if download
     log_verbose("\t-> #{download}...", inline: true)
-    if File.exist?(download)
+    if File.exist?(download) && !$force_download
       log_verbose(' [skipping -- already exists]')
       return
     end
@@ -340,7 +343,21 @@ def process_artist(artist)
   puts(SEPARATOR)
 end
 
+def parse_options
+  options = {}
+  OptionParser.new do |opts|
+    opts.banner = "Usage: ruby main.rb [options]"
+    opts.on("-f", "--force", "Force download of files even if they already exist") do
+      options[:force] = true
+    end
+  end.parse!
+  options
+end
+
 def main
+  options = parse_options
+  $force_download = options[:force]
+
   data = fanbox('/plan.listSupporting')
   supporting = data.map { |dict| Artist.from(dict) }
   total_fee = supporting.reduce(0) { |acc, artist| acc + artist.fee }
