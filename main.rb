@@ -10,10 +10,10 @@ SEPARATOR = ('-' * 100).freeze
 $current_downloads = ThreadSafe::Hash.new
 
 # ANSI color codes
-GREEN = "\e[32m"
-YELLOW = "\e[33m"
-RED = "\e[31m"
-RESET = "\e[0m"
+GREEN = "\e[32m".freeze
+YELLOW = "\e[33m".freeze
+RED = "\e[31m".freeze
+RESET = "\e[0m".freeze
 
 def log_verbose(message)
   puts "#{GREEN}[VERBOSE] #{message}#{RESET}" if ENV['VERBOSE']
