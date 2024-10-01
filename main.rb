@@ -22,7 +22,7 @@ def log(level, message, color = nil, inline: false)
 end
 
 def log_verbose(message, inline: false)
-  log('verbose', message, GREEN, inline: inline) if ENV['VERBOSE']
+  log('verbose', message, GREEN, inline: inline) if ENV['VERBOSE'] && ENV['VERBOSE'].downcase != 'false' && ENV['VERBOSE'] != '0'
 end
 
 def log_info(message, inline: false)
