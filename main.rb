@@ -9,6 +9,28 @@ SEPARATOR = ('-' * 100).freeze
 
 $current_downloads = ThreadSafe::Hash.new
 
+# ANSI color codes
+GREEN = "\e[32m"
+YELLOW = "\e[33m"
+RED = "\e[31m"
+RESET = "\e[0m"
+
+def log_verbose(message)
+  puts "#{GREEN}[VERBOSE] #{message}#{RESET}" if ENV['VERBOSE']
+end
+
+def log_info(message)
+  puts "[INFO] #{message}"
+end
+
+def log_warn(message)
+  puts "#{YELLOW}[WARN] #{message}#{RESET}"
+end
+
+def log_error(message)
+  puts "#{RED}[ERROR] #{message}#{RESET}"
+end
+
 # Handle Ctrl-C (SIGINT)
 Signal.trap('INT') do
   $current_downloads.each_pair do |_thread, file|
