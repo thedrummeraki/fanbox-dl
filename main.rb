@@ -58,7 +58,7 @@ def fanbox_cookie
 rescue Errno::ENOENT
   log_warn('No cookie was found. Make sure to set a Fanbox.cc cookie in order to download posts.')
   log_warn("Without it, you won't be authenticated to Fanbox's server.")
-  ''
+  exit(1)
 end
 
 # A pixiv artist, fetched from the list of supporting artists.
