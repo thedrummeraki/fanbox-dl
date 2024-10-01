@@ -55,10 +55,32 @@ class Artist
     [name, title, id, creator_id].select { |x| skipped.include?(x) }.any?
   end
 
-  def self.skipped_artists
-    File.readlines('./artist.skip').map { |x| x.strip }
+  def self.parse_ignore_file
+    ignore_rules = { include: [], exclude: [] }
+    File.readlines('./artist.ignore').each do |line|
+      line = line.strip
+      next if line.empty? || line.start_with?('#')
+
+      if line.start_with?('!')
+        ignore_rules[:include] << line[1..]
+      else
+        ignore_rules[:exclude] << line
+      end
+    end
+    ignore_rules
   rescue Errno::ENOENT
-    []
+    { include: [], exclude: [] }
+  end
+
+  def skip?
+    ignore_rules = Artist.parse_ignore_file
+    identifiers = [name, title, id, creator_id]
+    
+    # Check if the artist is explicitly included
+    return false if identifiers.any? { |x| ignore_rules[:include].include?(x) }
+    
+    # Check if the artist is excluded
+    identifiers.any? { |x| ignore_rules[:exclude].include?(x) }
   end
 
   # File system identifier. Used to identify an artist on the file system.
